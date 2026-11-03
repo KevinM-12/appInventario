@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 
@@ -13,101 +12,93 @@ const CrudProductos = () => {
         stock: "",
     });
 
-    // Obtener todos los productos
-    const obtenerProductos = async () => {
-        try {
-            const response = await api.get("/productos");
-            setProductos(response.data);
-        } catch (error) {
-            console.error("Error al obtener productos:", error);
-        }
-    };
-
-    // Cargar productos al iniciar el componente
     useEffect(() => {
         obtenerProductos();
     }, []);
 
-    // Actualizar los campos del formulario
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+    // Función auxiliar para obtener los headers con el token
+    const getHeaders = () => {
+        const token = localStorage.getItem('token');
+        return {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        };
     };
 
-    // Guardar o actualizar un producto
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
+    const obtenerProductos = async () => {
         try {
-            if (form.id) {
-                await api.put(`/productos/${form.id}`, form);
-                alert("Producto actualizado correctamente");
-            } else {
-                await api.post("/productos", form);
-                alert("Producto registrado correctamente");
-            }
+            const response = await api.get(
+                '/api/productos',
+                getHeaders()
+            );
 
-            setForm({
-                id: null,
-                nombre: "",
-                descripcion: "",
-                precio: "",
-                stock: "",
-            });
-
-            await obtenerProductos();
+            setProductos(response.data);
         } catch (error) {
-            console.error("Error al guardar el producto:", error);
-            alert("No se pudo guardar el producto");
+            console.error("Error al obtener productos (posible token expirado)");
         }
     };
 
-    // Cargar un producto para editarlo
-    const handleEdit = (producto) => {
+    const handleChange = (e) => {
         setForm({
-            id: producto.id,
-            nombre: producto.nombre ?? "",
-            descripcion: producto.descripcion ?? "",
-            precio: producto.precio ?? "",
-            stock: producto.stock ?? "",
+            ...form,
+            [e.target.name]: e.target.value
         });
     };
 
-    // Cancelar la edición
-    const handleCancel = () => {
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (form.id) {
+            await api.put(
+                `/api/productos/${form.id}`,
+                form,
+                getHeaders()
+            );
+
+        } else {
+            await api.post(
+                "/api/productos",
+                form,
+                getHeaders()
+            );
+        }
+
         setForm({
             id: null,
             nombre: "",
             descripcion: "",
             precio: "",
-            stock: "",
+            stock: ""
         });
+
+        obtenerProductos();
     };
 
-    // Eliminar un producto
+    const handleEdit = (producto) => {
+        setForm(producto);
+    };
+
     const handleDelete = async (id) => {
         if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-            try {
-                await api.delete(`/productos/${id}`);
-                alert("Producto eliminado correctamente");
-                await obtenerProductos();
-            } catch (error) {
-                console.error("Error al eliminar el producto:", error);
-                alert("No se pudo eliminar el producto");
-            }
+            await api.delete(
+                `/productos/${id}`,
+                getHeaders()
+            );
+
+            obtenerProductos();
         }
     };
 
     return (
         <div className="container mt-4">
+
             <h2 className="text-center mb-4">
                 Gestión de Productos
             </h2>
 
             <div className="row">
-                {/* Formulario */}
+
                 <div className="col-md-4">
                     <h4>
                         {form.id ? "Editar Producto" : "Nuevo Producto"}
@@ -121,6 +112,7 @@ const CrudProductos = () => {
                             <label className="form-label">
                                 Nombre
                             </label>
+
                             <input
                                 type="text"
                                 name="nombre"
@@ -135,6 +127,7 @@ const CrudProductos = () => {
                             <label className="form-label">
                                 Descripción
                             </label>
+
                             <input
                                 type="text"
                                 name="descripcion"
@@ -148,10 +141,10 @@ const CrudProductos = () => {
                             <label className="form-label">
                                 Precio (S/)
                             </label>
+
                             <input
                                 type="number"
                                 step="0.01"
-                                min="0"
                                 name="precio"
                                 className="form-control"
                                 value={form.precio}
@@ -164,10 +157,9 @@ const CrudProductos = () => {
                             <label className="form-label">
                                 Stock
                             </label>
+
                             <input
                                 type="number"
-                                min="0"
-                                step="1"
                                 name="stock"
                                 className="form-control"
                                 value={form.stock}
@@ -182,78 +174,56 @@ const CrudProductos = () => {
                         >
                             {form.id ? "Actualizar" : "Guardar"}
                         </button>
-
-                        {form.id && (
-                            <button
-                                type="button"
-                                className="btn btn-secondary w-100 mt-2"
-                                onClick={handleCancel}
-                            >
-                                Cancelar edición
-                            </button>
-                        )}
                     </form>
                 </div>
 
-                {/* Tabla de productos */}
                 <div className="col-md-8">
-                    <h4>Lista de Productos</h4>
+                    <h4>
+                        Lista de Productos
+                    </h4>
 
-                    <div className="table-responsive">
-                        <table className="table table-striped table-hover shadow-sm">
-                            <thead className="table-dark">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nombre</th>
-                                    <th>Precio</th>
-                                    <th>Stock</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
+                    <table className="table table-striped table-hover shadow-sm">
 
-                            <tbody>
-                                {productos.length > 0 ? (
-                                    productos.map((prod) => (
-                                        <tr key={prod.id}>
-                                            <td>{prod.id}</td>
-                                            <td>{prod.nombre}</td>
-                                            <td>
-                                                S/ {prod.precio}
-                                            </td>
-                                            <td>{prod.stock}</td>
-                                            <td>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-warning btn-sm me-2 mb-1"
-                                                    onClick={() => handleEdit(prod)}
-                                                >
-                                                    Editar
-                                                </button>
+                        <thead className="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
 
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-danger btn-sm mb-1"
-                                                    onClick={() => handleDelete(prod.id)}
-                                                >
-                                                    Eliminar
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td
-                                            colSpan="5"
-                                            className="text-center"
+                        <tbody>
+                            {productos.map((prod) => (
+                                <tr key={prod.id}>
+                                    <td>{prod.id}</td>
+                                    <td>{prod.nombre}</td>
+                                    <td>S/ {prod.precio}</td>
+                                    <td>{prod.stock}</td>
+
+                                    <td>
+                                        <button
+                                            className="btn btn-warning btn-sm me-2"
+                                            onClick={() => handleEdit(prod)}
                                         >
-                                            No hay productos registrados.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                            Editar
+                                        </button>
+
+                                        <button
+                                            className="btn btn-danger btn-sm"
+                                            onClick={() => handleDelete(prod.id)}
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+
+                    </table>
                 </div>
+
             </div>
         </div>
     );

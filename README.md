@@ -1,16 +1,31 @@
-# React + Vite
+# Nexus Inventory — Panel administrativo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interfaz React + Vite para el Laboratorio #9. Conserva la configuración de Axios que ya tenía el proyecto (`http://localhost:3000`) y las rutas originales de productos.
 
-Currently, two official plugins are available:
+## Ejecutar el frontend
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+## Conexión con el backend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+El frontend consume la API configurada en `src/services/api.js`:
 
-## Expanding the ESLint configuration
+- `GET /productos`, `POST /productos`, `PUT /productos/:id`, `DELETE /productos/:id`
+- `GET /categorias`, `POST /categorias`, `PUT /categorias/:id`, `DELETE /categorias/:id`
+- `GET /proveedores`, `POST /proveedores`, `PUT /proveedores/:id`, `DELETE /proveedores/:id`
+- `GET /movimientos`, `POST /movimientos`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Importante:** el ZIP recibido contiene el frontend `appInventario`, pero no incluye el código del servidor Express ni el esquema MySQL. Por eso se conserva la URL existente y se prepara la interfaz para esos endpoints, sin inventar credenciales, tablas ni implementar una lógica de backend que no estaba en los archivos entregados. Las pantallas de categorías, proveedores y Kardex requieren que el backend exponga las rutas indicadas.
+
+## Secciones
+
+- Resumen: indicadores de productos, unidades, stock bajo y categorías.
+- Productos: alta, edición, eliminación y listado.
+- Categorías: alta, edición, eliminación y listado.
+- Proveedores: alta, edición, eliminación y listado.
+- Kardex: registro e historial de entradas, salidas y ajustes.
+
+La navegación se realiza mediante rutas hash (`#dashboard`, `#productos`, etc.) para no introducir dependencias nuevas en el proyecto recibido.
