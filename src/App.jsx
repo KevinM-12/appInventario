@@ -709,27 +709,18 @@ function Kardex({ productos, movimientos, onRefresh }) {
 function InventoryPanel() {
   const { data, loading, refresh, connectionError } = useInventoryData()
 
-  const [active, setActive] = useState(
-    () => window.location.hash.replace('#', '') || 'dashboard'
-  )
+  const [active, setActive] = useState(() => {
+  return window.location.pathname === '/productos'
+    ? 'productos'
+    : 'dashboard'
+})
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navigate = id => {
-    setActive(id)
-    window.location.hash = id
-    setSidebarOpen(false)
+  setActive(id)
+  setSidebarOpen(false)
   }
-
-  useEffect(() => {
-    const sync = () => {
-      setActive(window.location.hash.replace('#', '') || 'dashboard')
-    }
-
-    window.addEventListener('hashchange', sync)
-
-    return () => window.removeEventListener('hashchange', sync)
-  }, [])
 
   const current = navigation.find(n => n.id === active) || navigation[0]
 

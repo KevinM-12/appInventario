@@ -1,232 +1,586 @@
-import { useState, useEffect } from "react";
-import api from "../../services/api";
+import { useState, useEffect } from 'react'
+import api from '../../services/api'
 
-const CrudProductos = () => {
-    const [productos, setProductos] = useState([]);
+function EmptyState({ text }) {
+  return (
+    <div className="empty-state">
+      <span>⌁</span>
+      <p>{text}</p>
+    </div>
+  )
+}
 
-    const [form, setForm] = useState({
-        id: null,
-        nombre: "",
-        descripcion: "",
-        precio: "",
-        stock: "",
-    });
+const formularioInicial = {
+  id: null,
+  nombre: '',
+  descripcion: '',
+  precio: '',
+  stock: '',
+  categoria_id: '',
+  proveedor_id: ''
+}
 
-    useEffect(() => {
-        obtenerProductos();
-    }, []);
+const CrudProductos = ({ onRefresh }) => {
+  const [productos, setProductos] = useState([])
+  const [categorias, setCategorias] = useState([])
+  const [proveedores, setProveedores] = useState([])
 
-    // Función auxiliar para obtener los headers con el token
-    const getHeaders = () => {
-        const token = localStorage.getItem('token');
-        return {
-            headers: {
-                Authorization: `Bearer ${token}`
+  const [form, setForm] = useState(formularioInicial)
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const getHeaders = () => {
+    const token = localStorage.getItem('token')
+
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  }
+
+  // ========================================
+  // OBTENER PRODUCTOS
+  // ========================================
+
+  const obtenerProductos = async () => {
+    try {
+      setLoading(true)
+
+      const response = await api.get(
+        '/productos',
+        getHeaders()
+      )
+
+      setProductos(
+        Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || []
+      )
+
+    } catch (error) {
+      console.error('Error al obtener productos:', error)
+      setMessage('No se pudieron cargar los productos.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ========================================
+  // OBTENER CATEGORÍAS
+  // ========================================
+
+  const obtenerCategorias = async () => {
+    try {
+      const response = await api.get(
+        '/categorias',
+        getHeaders()
+      )
+
+      setCategorias(
+        Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || []
+      )
+
+    } catch (error) {
+      console.error('Error al obtener categorías:', error)
+      setMessage('No se pudieron cargar las categorías.')
+    }
+  }
+
+  // ========================================
+  // OBTENER PROVEEDORES
+  // ========================================
+
+  const obtenerProveedores = async () => {
+    try {
+      const response = await api.get(
+        '/proveedores',
+        getHeaders()
+      )
+
+      setProveedores(
+        Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || []
+      )
+
+    } catch (error) {
+      console.error('Error al obtener proveedores:', error)
+      setMessage('No se pudieron cargar los proveedores.')
+    }
+  }
+
+  useEffect(() => {
+    obtenerProductos()
+    obtenerCategorias()
+    obtenerProveedores()
+  }, [])
+
+  // ========================================
+  // LIMPIAR FORMULARIO
+  // ========================================
+
+  const resetForm = () => {
+    setForm(formularioInicial)
+    setMessage('')
+  }
+
+  // ========================================
+  // CONTROLAR CAMPOS
+  // ========================================
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  // ========================================
+  // REGISTRAR / ACTUALIZAR PRODUCTO
+  // ========================================
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    setSaving(true)
+    setMessage('')
+
+    try {
+      const datos = {
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        precio: Number(form.precio),
+        stock: Number(form.stock),
+        categoria_id: Number(form.categoria_id),
+        proveedor_id: Number(form.proveedor_id)
+      }
+
+      if (form.id) {
+        await api.put(
+          `/productos/${form.id}`,
+          datos,
+          getHeaders()
+        )
+      } else {
+        await api.post(
+          '/productos',
+          datos,
+          getHeaders()
+        )
+      }
+
+      resetForm()
+
+      await obtenerProductos()
+
+      if (onRefresh) {
+        await onRefresh()
+      }
+
+    } catch (error) {
+      console.error('Error al guardar producto:', error)
+
+      setMessage(
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'No se pudo guardar el producto.'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ========================================
+  // EDITAR PRODUCTO
+  // ========================================
+
+  const handleEdit = (producto) => {
+    setForm({
+      id: producto.id,
+      nombre: producto.nombre || '',
+      descripcion: producto.descripcion || '',
+      precio: producto.precio ?? '',
+      stock: producto.stock ?? '',
+      categoria_id: producto.categoria_id ?? producto.categoria?.id ?? '',
+      proveedor_id: producto.proveedor_id ?? producto.proveedor?.id ?? ''
+    })
+
+    setMessage('')
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  }
+
+  // ========================================
+  // ELIMINAR PRODUCTO
+  // ========================================
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este producto?')) {
+      return
+    }
+
+    try {
+      await api.delete(
+        `/productos/${id}`,
+        getHeaders()
+      )
+
+      if (form.id === id) {
+        resetForm()
+      }
+
+      await obtenerProductos()
+
+      if (onRefresh) {
+        await onRefresh()
+      }
+
+    } catch (error) {
+      console.error('Error al eliminar producto:', error)
+
+      setMessage(
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'No se pudo eliminar el producto.'
+      )
+    }
+  }
+
+  // ========================================
+  // INDICADORES
+  // ========================================
+
+  const stockTotal = productos.reduce(
+    (sum, p) => sum + Number(p.stock || 0),
+    0
+  )
+
+  const lowStock = productos.filter(
+    p => Number(p.stock) <= 5
+  ).length
+
+  // ========================================
+  // INTERFAZ
+  // ========================================
+
+  return (
+    <div className="products-layout">
+
+      {/* FORMULARIO */}
+
+      <section className="panel form-panel">
+
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">FORMULARIO</span>
+
+            <h3>
+              {form.id ? 'Editar producto' : 'Nuevo producto'}
+            </h3>
+          </div>
+
+          <span className="form-symbol">＋</span>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+
+          <label className="field">
+            Nombre del producto
+
+            <input
+              type="text"
+              name="nombre"
+              value={form.nombre}
+              onChange={handleChange}
+              placeholder="Ej. Teclado mecánico"
+              required
+            />
+          </label>
+
+          <label className="field">
+            Descripción
+
+            <textarea
+              name="descripcion"
+              rows="3"
+              value={form.descripcion}
+              onChange={handleChange}
+              placeholder="Descripción del producto..."
+            />
+          </label>
+
+          {/* CATEGORÍA */}
+
+          <label className="field">
+            Categoría
+
+            <select
+              name="categoria_id"
+              value={form.categoria_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Seleccionar categoría</option>
+
+              {categorias.map(categoria => (
+                <option
+                  key={categoria.id}
+                  value={categoria.id}
+                >
+                  {categoria.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* PROVEEDOR */}
+
+          <label className="field">
+            Proveedor
+
+            <select
+              name="proveedor_id"
+              value={form.proveedor_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Seleccionar proveedor</option>
+
+              {proveedores.map(proveedor => (
+                <option
+                  key={proveedor.id}
+                  value={proveedor.id}
+                >
+                  {proveedor.razon_social}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            Precio (S/)
+
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="precio"
+              value={form.precio}
+              onChange={handleChange}
+              placeholder="0.00"
+              required
+            />
+          </label>
+
+          <label className="field">
+            Stock disponible
+
+            <input
+              type="number"
+              min="0"
+              name="stock"
+              value={form.stock}
+              onChange={handleChange}
+              placeholder="Ej. 25"
+              required
+            />
+          </label>
+
+          {message && (
+            <div className="form-error">
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={saving}
+          >
+            {saving
+              ? 'Guardando...'
+              : form.id
+                ? 'Guardar cambios'
+                : 'Registrar producto'
             }
-        };
-    };
 
-    const obtenerProductos = async () => {
-        try {
-            const response = await api.get(
-                '/api/productos',
-                getHeaders()
-            );
+            <span>→</span>
+          </button>
 
-            setProductos(response.data);
-        } catch (error) {
-            console.error("Error al obtener productos (posible token expirado)");
-        }
-    };
+          {form.id && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={resetForm}
+            >
+              Cancelar edición
+            </button>
+          )}
 
-    const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value
-        });
-    };
+        </form>
+      </section>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+      {/* LISTADO */}
 
-        if (form.id) {
-            await api.put(
-                `/api/productos/${form.id}`,
-                form,
-                getHeaders()
-            );
+      <section className="panel list-panel">
 
-        } else {
-            await api.post(
-                "/api/productos",
-                form,
-                getHeaders()
-            );
-        }
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">INVENTARIO</span>
+            <h3>Listado de productos</h3>
+          </div>
 
-        setForm({
-            id: null,
-            nombre: "",
-            descripcion: "",
-            precio: "",
-            stock: ""
-        });
+          <span className="count-pill">
+            {productos.length} registros
+          </span>
+        </div>
 
-        obtenerProductos();
-    };
+        {/* INDICADORES */}
 
-    const handleEdit = (producto) => {
-        setForm(producto);
-    };
+        <div className="product-summary">
 
-    const handleDelete = async (id) => {
-        if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-            await api.delete(
-                `/productos/${id}`,
-                getHeaders()
-            );
+          <div className="product-summary-item">
+            <span>PRODUCTOS</span>
+            <strong>{productos.length}</strong>
+          </div>
 
-            obtenerProductos();
-        }
-    };
+          <div className="product-summary-item">
+            <span>STOCK TOTAL</span>
+            <strong>{stockTotal}</strong>
+          </div>
 
-    return (
-        <div className="container mt-4">
+          <div className="product-summary-item">
+            <span>STOCK BAJO</span>
+            <strong className={lowStock ? 'low-stock-value' : ''}>
+              {lowStock}
+            </strong>
+          </div>
 
-            <h2 className="text-center mb-4">
-                Gestión de Productos
-            </h2>
+        </div>
 
-            <div className="row">
+        {loading ? (
+          <EmptyState text="Cargando productos..." />
 
-                <div className="col-md-4">
-                    <h4>
-                        {form.id ? "Editar Producto" : "Nuevo Producto"}
-                    </h4>
+        ) : productos.length ? (
 
-                    <form
-                        onSubmit={handleSubmit}
-                        className="card p-3 shadow-sm"
-                    >
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Nombre
-                            </label>
+          <div className="table-wrap">
 
-                            <input
-                                type="text"
-                                name="nombre"
-                                className="form-control"
-                                value={form.nombre}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Proveedor</th>
+                  <th>Precio</th>
+                  <th>Stock</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
 
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Descripción
-                            </label>
+              <tbody>
+                {productos.map(prod => (
 
-                            <input
-                                type="text"
-                                name="descripcion"
-                                className="form-control"
-                                value={form.descripcion}
-                                onChange={handleChange}
-                            />
-                        </div>
+                  <tr key={prod.id}>
 
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Precio (S/)
-                            </label>
+                    <td>
+                      <span className="product-id">
+                        #{prod.id}
+                      </span>
+                    </td>
 
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="precio"
-                                className="form-control"
-                                value={form.precio}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+                    <td>
+                      <div className="product-name">
+                        <strong>{prod.nombre}</strong>
 
-                        <div className="mb-3">
-                            <label className="form-label">
-                                Stock
-                            </label>
+                        <small>
+                          {prod.descripcion || 'Sin descripción'}
+                        </small>
+                      </div>
+                    </td>
 
-                            <input
-                                type="number"
-                                name="stock"
-                                className="form-control"
-                                value={form.stock}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+                    <td>
+                      {prod.categoria?.nombre || 'Sin categoría'}
+                    </td>
+
+                    <td>
+                      {prod.proveedor?.razon_social || 'Sin proveedor'}
+                    </td>
+
+                    <td>
+                      <strong>
+                        S/ {Number(prod.precio || 0).toFixed(2)}
+                      </strong>
+                    </td>
+
+                    <td>
+                      {prod.stock ?? 0} unidades
+                    </td>
+
+                    <td>
+                      <span className={`status ${
+                        Number(prod.stock) <= 5
+                          ? 'warning'
+                          : 'success'
+                      }`}>
+                        {Number(prod.stock) <= 5
+                          ? 'Stock bajo'
+                          : 'Disponible'
+                        }
+                      </span>
+                    </td>
+
+                    <td>
+                      <div className="actions">
 
                         <button
-                            type="submit"
-                            className="btn btn-primary w-100"
+                          type="button"
+                          className="icon-button edit"
+                          title="Editar producto"
+                          onClick={() => handleEdit(prod)}
                         >
-                            {form.id ? "Actualizar" : "Guardar"}
+                          ✎
                         </button>
-                    </form>
-                </div>
 
-                <div className="col-md-8">
-                    <h4>
-                        Lista de Productos
-                    </h4>
+                        <button
+                          type="button"
+                          className="icon-button delete"
+                          title="Eliminar producto"
+                          onClick={() => handleDelete(prod.id)}
+                        >
+                          ×
+                        </button>
 
-                    <table className="table table-striped table-hover shadow-sm">
+                      </div>
+                    </td>
 
-                        <thead className="table-dark">
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Precio</th>
-                                <th>Stock</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
+                  </tr>
 
-                        <tbody>
-                            {productos.map((prod) => (
-                                <tr key={prod.id}>
-                                    <td>{prod.id}</td>
-                                    <td>{prod.nombre}</td>
-                                    <td>S/ {prod.precio}</td>
-                                    <td>{prod.stock}</td>
+                ))}
+              </tbody>
+            </table>
 
-                                    <td>
-                                        <button
-                                            className="btn btn-warning btn-sm me-2"
-                                            onClick={() => handleEdit(prod)}
-                                        >
-                                            Editar
-                                        </button>
+          </div>
 
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => handleDelete(prod.id)}
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+        ) : (
 
-                    </table>
-                </div>
+          <EmptyState text="Todavía no hay productos registrados." />
 
-            </div>
-        </div>
-    );
-};
+        )}
 
-export default CrudProductos;
+      </section>
+
+    </div>
+  )
+}
+
+export default CrudProductos
